@@ -66,3 +66,34 @@ resource "google_storage_bucket" "vinay_bucket" {
   force_destroy = true
   uniform_bucket_level_access = true
 }
+
+resource "google_compute_instance" "vinaysvm" {
+  name         = "vinaysvm"
+  machine_type = var.vm_machine_type
+  zone         = var.zone
+
+  boot_disk {
+    initialize_params {
+      image = data.google_compute_image.debian.self_link
+      size  = 10
+    }
+  }
+
+  network_interface {
+    network = "default"
+    access_config {}
+  }
+
+  metadata = {
+    startup-script = <<-EOT
+      #!/bin/bash
+      echo "hello vinay" | tee /var/log/startup-script.log
+    EOT
+  }
+
+  tags = var.tags
+
+  lifecycle {
+    prevent_destroy = false
+  }
+}
