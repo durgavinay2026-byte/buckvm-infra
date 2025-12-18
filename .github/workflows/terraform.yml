@@ -31,16 +31,10 @@ jobs:
           if command -v sha256sum >/dev/null 2>&1; then sha256sum "$CREDS_PATH" || true; else shasum -a 256 "$CREDS_PATH" || true; fi
             echo '--- creds file json check ---'
             if command -v jq >/dev/null 2>&1; then
-            jq -e . "${{ runner.temp }}/gcp-creds.json" && echo 'GCP credentials JSON is valid' || (echo 'Invalid GCP credentials JSON' && exit 1)
+              jq -e . "${{ runner.temp }}/gcp-creds.json" && echo 'GCP credentials JSON is valid' || (echo 'Invalid GCP credentials JSON' && exit 1)
             else
-            python -c "import json,sys
-      path='${{ runner.temp }}/gcp-creds.json'
-      try:
-        json.load(open(path))
-        print('GCP credentials JSON is valid')
-      except Exception as e:
-        print('Invalid GCP credentials JSON:', e)
-        sys.exit(1)"
+              python -c "import json,sys; json.load(open('${{ runner.temp }}/gcp-creds.json')); print('GCP credentials JSON is valid')"
+              if [ $? -ne 0 ]; then echo 'Invalid GCP credentials JSON' && exit 1; fi
             fi
 
       - name: Setup Terraform
@@ -88,16 +82,10 @@ jobs:
           if command -v sha256sum >/dev/null 2>&1; then sha256sum "$CREDS_PATH" || true; else shasum -a 256 "$CREDS_PATH" || true; fi
             echo '--- creds file json check ---'
             if command -v jq >/dev/null 2>&1; then
-            jq -e . "${{ runner.temp }}/gcp-creds.json" && echo 'GCP credentials JSON is valid' || (echo 'Invalid GCP credentials JSON' && exit 1)
+              jq -e . "${{ runner.temp }}/gcp-creds.json" && echo 'GCP credentials JSON is valid' || (echo 'Invalid GCP credentials JSON' && exit 1)
             else
-            python -c "import json,sys
-      path='${{ runner.temp }}/gcp-creds.json'
-      try:
-        json.load(open(path))
-        print('GCP credentials JSON is valid')
-      except Exception as e:
-        print('Invalid GCP credentials JSON:', e)
-        sys.exit(1)"
+              python -c "import json,sys; json.load(open('${{ runner.temp }}/gcp-creds.json')); print('GCP credentials JSON is valid')"
+              if [ $? -ne 0 ]; then echo 'Invalid GCP credentials JSON' && exit 1; fi
             fi
 
       - name: Setup Terraform
