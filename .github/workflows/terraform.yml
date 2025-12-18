@@ -1,9 +1,20 @@
 name: Terraform
 
 on:
+  push:
+    branches: [ "main" ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform Action'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+        - apply
+        - destroy
 
 jobs:
   plan:
@@ -29,32 +40,6 @@ jobs:
             printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "$OUT"
           fi
           echo "WROTE $OUT"
-      - name: Debug credentials file
-        run: |
-          CREDS_PATH="${{ runner.temp }}/gcp-creds.json"
-          echo '--- creds file metadata ---'
-          ls -l "$CREDS_PATH" || true
-          wc -c "$CREDS_PATH" || true
-          if command -v sha256sum >/dev/null 2>&1; then sha256sum "$CREDS_PATH" || true; else shasum -a 256 "$CREDS_PATH" || true; fi
-            echo '--- creds file json check ---'
-            if command -v jq >/dev/null 2>&1; then
-              jq -e . "${{ runner.temp }}/gcp-creds.json" && echo 'GCP credentials JSON is valid' || (echo 'Invalid GCP credentials JSON' && exit 1)
-            else
-              python -c "import json,sys; json.load(open('${{ runner.temp }}/gcp-creds.json')); print('GCP credentials JSON is valid')"
-              if [ $? -ne 0 ]; then echo 'Invalid GCP credentials JSON' && exit 1; fi
-            fi
-            echo '--- redacted preview (first 30 / last 30 chars) ---'
-            CREDS_SINGLE=$(tr -d '\r\n' < "${{ runner.temp }}/gcp-creds.json") || true
-            LEN=$(echo -n "$CREDS_SINGLE" | wc -c || true)
-            if [ -z "$CREDS_SINGLE" ]; then
-              echo 'creds empty'
-            elif [ "$LEN" -le 70 ]; then
-              echo "CONTENT: $CREDS_SINGLE"
-            else
-              PREFIX=$(echo -n "$CREDS_SINGLE" | cut -c1-30)
-              SUFFIX=$(echo -n "$CREDS_SINGLE" | rev | cut -c1-30 | rev)
-              echo "${PREFIX}...${SUFFIX} (len=${LEN})"
-            fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -76,9 +61,9 @@ jobs:
           path: tfplan
 
   apply:
-    name: Terraform Apply (manual)
+    name: Terraform Apply
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -91,7 +76,6 @@ jobs:
 
       - name: Write credentials file
         run: |
-          # Prefer base64-encoded secret to avoid multiline paste issues
           OUT="${RUNNER_TEMP}/gcp-creds.json"
           if [ -n "${{ secrets.GCP_CREDENTIALS_B64 }}" ]; then
             echo "${{ secrets.GCP_CREDENTIALS_B64 }}" | base64 -d > "$OUT"
@@ -99,32 +83,6 @@ jobs:
             printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "$OUT"
           fi
           echo "WROTE $OUT"
-      - name: Debug credentials file
-        run: |
-          CREDS_PATH="${{ runner.temp }}/gcp-creds.json"
-          echo '--- creds file metadata ---'
-          ls -l "$CREDS_PATH" || true
-          wc -c "$CREDS_PATH" || true
-          if command -v sha256sum >/dev/null 2>&1; then sha256sum "$CREDS_PATH" || true; else shasum -a 256 "$CREDS_PATH" || true; fi
-            echo '--- creds file json check ---'
-            if command -v jq >/dev/null 2>&1; then
-              jq -e . "${{ runner.temp }}/gcp-creds.json" && echo 'GCP credentials JSON is valid' || (echo 'Invalid GCP credentials JSON' && exit 1)
-            else
-              python -c "import json,sys; json.load(open('${{ runner.temp }}/gcp-creds.json')); print('GCP credentials JSON is valid')"
-              if [ $? -ne 0 ]; then echo 'Invalid GCP credentials JSON' && exit 1; fi
-            fi
-            echo '--- redacted preview (first 30 / last 30 chars) ---'
-            CREDS_SINGLE=$(tr -d '\r\n' < "${{ runner.temp }}/gcp-creds.json") || true
-            LEN=$(echo -n "$CREDS_SINGLE" | wc -c || true)
-            if [ -z "$CREDS_SINGLE" ]; then
-              echo 'creds empty'
-            elif [ "$LEN" -le 70 ]; then
-              echo "CONTENT: $CREDS_SINGLE"
-            else
-              PREFIX=$(echo -n "$CREDS_SINGLE" | cut -c1-30)
-              SUFFIX=$(echo -n "$CREDS_SINGLE" | rev | cut -c1-30 | rev)
-              echo "${PREFIX}...${SUFFIX} (len=${LEN})"
-            fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -138,3 +96,40 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-creds.json
         run: terraform apply -auto-approve
+
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Google Cloud auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+
+      - name: Write credentials file
+        run: |
+          OUT="${RUNNER_TEMP}/gcp-creds.json"
+          if [ -n "${{ secrets.GCP_CREDENTIALS_B64 }}" ]; then
+            echo "${{ secrets.GCP_CREDENTIALS_B64 }}" | base64 -d > "$OUT"
+          else
+            printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "$OUT"
+          fi
+          echo "WROTE $OUT"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-creds.json
+        run: terraform init -backend-config="bucket=${{ secrets.GCP_TF_BUCKET }}" -backend-config="credentials=${{ runner.temp }}/gcp-creds.json"
+
+      - name: Terraform Destroy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-creds.json
+        run: terraform destroy -auto-approve
