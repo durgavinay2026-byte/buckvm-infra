@@ -36,6 +36,18 @@ jobs:
               python -c "import json,sys; json.load(open('${{ runner.temp }}/gcp-creds.json')); print('GCP credentials JSON is valid')"
               if [ $? -ne 0 ]; then echo 'Invalid GCP credentials JSON' && exit 1; fi
             fi
+            echo '--- redacted preview (first 30 / last 30 chars) ---'
+            CREDS_SINGLE=$(tr -d '\r\n' < "${{ runner.temp }}/gcp-creds.json") || true
+            LEN=$(echo -n "$CREDS_SINGLE" | wc -c || true)
+            if [ -z "$CREDS_SINGLE" ]; then
+              echo 'creds empty'
+            elif [ "$LEN" -le 70 ]; then
+              echo "CONTENT: $CREDS_SINGLE"
+            else
+              PREFIX=$(echo -n "$CREDS_SINGLE" | cut -c1-30)
+              SUFFIX=$(echo -n "$CREDS_SINGLE" | rev | cut -c1-30 | rev)
+              echo "${PREFIX}...${SUFFIX} (len=${LEN})"
+            fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -86,6 +98,18 @@ jobs:
             else
               python -c "import json,sys; json.load(open('${{ runner.temp }}/gcp-creds.json')); print('GCP credentials JSON is valid')"
               if [ $? -ne 0 ]; then echo 'Invalid GCP credentials JSON' && exit 1; fi
+            fi
+            echo '--- redacted preview (first 30 / last 30 chars) ---'
+            CREDS_SINGLE=$(tr -d '\r\n' < "${{ runner.temp }}/gcp-creds.json") || true
+            LEN=$(echo -n "$CREDS_SINGLE" | wc -c || true)
+            if [ -z "$CREDS_SINGLE" ]; then
+              echo 'creds empty'
+            elif [ "$LEN" -le 70 ]; then
+              echo "CONTENT: $CREDS_SINGLE"
+            else
+              PREFIX=$(echo -n "$CREDS_SINGLE" | cut -c1-30)
+              SUFFIX=$(echo -n "$CREDS_SINGLE" | rev | cut -c1-30 | rev)
+              echo "${PREFIX}...${SUFFIX} (len=${LEN})"
             fi
 
       - name: Setup Terraform
