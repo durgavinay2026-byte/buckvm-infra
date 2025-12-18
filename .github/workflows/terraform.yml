@@ -21,7 +21,14 @@ jobs:
 
       - name: Write credentials file
         run: |
-          printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "${{ runner.temp }}/gcp-creds.json"
+          # Prefer base64-encoded secret to avoid multiline paste issues
+          OUT="${RUNNER_TEMP}/gcp-creds.json"
+          if [ -n "${{ secrets.GCP_CREDENTIALS_B64 }}" ]; then
+            echo "${{ secrets.GCP_CREDENTIALS_B64 }}" | base64 -d > "$OUT"
+          else
+            printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "$OUT"
+          fi
+          echo "WROTE $OUT"
       - name: Debug credentials file
         run: |
           CREDS_PATH="${{ runner.temp }}/gcp-creds.json"
@@ -84,7 +91,14 @@ jobs:
 
       - name: Write credentials file
         run: |
-          printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "${{ runner.temp }}/gcp-creds.json"
+          # Prefer base64-encoded secret to avoid multiline paste issues
+          OUT="${RUNNER_TEMP}/gcp-creds.json"
+          if [ -n "${{ secrets.GCP_CREDENTIALS_B64 }}" ]; then
+            echo "${{ secrets.GCP_CREDENTIALS_B64 }}" | base64 -d > "$OUT"
+          else
+            printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "$OUT"
+          fi
+          echo "WROTE $OUT"
       - name: Debug credentials file
         run: |
           CREDS_PATH="${{ runner.temp }}/gcp-creds.json"
