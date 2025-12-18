@@ -23,6 +23,21 @@ jobs:
         run: |
           printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "${{ runner.temp }}/gcp-creds.json"
 
+      - name: Validate credentials file
+        run: |
+          CREDS_PATH="${{ runner.temp }}/gcp-creds.json"
+          python - <<'PY'
+import json,sys
+path = "${{ runner.temp }}/gcp-creds.json"
+try:
+    with open(path) as f:
+        json.load(f)
+    print('GCP credentials JSON is valid')
+except Exception as e:
+    print('Invalid GCP credentials JSON:', e)
+    sys.exit(1)
+PY
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
@@ -59,6 +74,21 @@ jobs:
       - name: Write credentials file
         run: |
           printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "${{ runner.temp }}/gcp-creds.json"
+
+      - name: Validate credentials file
+        run: |
+          CREDS_PATH="${{ runner.temp }}/gcp-creds.json"
+          python - <<'PY'
+import json,sys
+path = "${{ runner.temp }}/gcp-creds.json"
+try:
+    with open(path) as f:
+        json.load(f)
+    print('GCP credentials JSON is valid')
+except Exception as e:
+    print('Invalid GCP credentials JSON:', e)
+    sys.exit(1)
+PY
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
