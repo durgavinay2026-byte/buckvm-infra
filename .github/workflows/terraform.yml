@@ -21,7 +21,7 @@ jobs:
 
       - name: Write credentials file
         run: |
-          echo "${{ secrets.GCP_CREDENTIALS }}" > ${{ runner.temp }}/gcp-creds.json
+          printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "${{ runner.temp }}/gcp-creds.json"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -58,7 +58,7 @@ jobs:
 
       - name: Write credentials file
         run: |
-          echo "${{ secrets.GCP_CREDENTIALS }}" > ${{ runner.temp }}/gcp-creds.json
+          printf '%s' "${{ secrets.GCP_CREDENTIALS }}" > "${{ runner.temp }}/gcp-creds.json"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
