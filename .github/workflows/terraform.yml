@@ -29,18 +29,19 @@ jobs:
           ls -l "$CREDS_PATH" || true
           wc -c "$CREDS_PATH" || true
           if command -v sha256sum >/dev/null 2>&1; then sha256sum "$CREDS_PATH" || true; else shasum -a 256 "$CREDS_PATH" || true; fi
-          echo '--- creds file json check ---'
-          python - <<'PY'
-import json,sys
-path = "${{ runner.temp }}/gcp-creds.json"
-try:
-    with open(path) as f:
-        json.load(f)
-    print('GCP credentials JSON is valid')
-except Exception as e:
-    print('Invalid GCP credentials JSON:', e)
-    sys.exit(1)
-          PY
+            echo '--- creds file json check ---'
+            if command -v jq >/dev/null 2>&1; then
+            jq -e . "${{ runner.temp }}/gcp-creds.json" && echo 'GCP credentials JSON is valid' || (echo 'Invalid GCP credentials JSON' && exit 1)
+            else
+            python -c "import json,sys
+      path='${{ runner.temp }}/gcp-creds.json'
+      try:
+        json.load(open(path))
+        print('GCP credentials JSON is valid')
+      except Exception as e:
+        print('Invalid GCP credentials JSON:', e)
+        sys.exit(1)"
+            fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -85,18 +86,19 @@ except Exception as e:
           ls -l "$CREDS_PATH" || true
           wc -c "$CREDS_PATH" || true
           if command -v sha256sum >/dev/null 2>&1; then sha256sum "$CREDS_PATH" || true; else shasum -a 256 "$CREDS_PATH" || true; fi
-          echo '--- creds file json check ---'
-          python - <<'PY'
-import json,sys
-path = "${{ runner.temp }}/gcp-creds.json"
-try:
-    with open(path) as f:
-        json.load(f)
-    print('GCP credentials JSON is valid')
-except Exception as e:
-    print('Invalid GCP credentials JSON:', e)
-    sys.exit(1)
-          PY
+            echo '--- creds file json check ---'
+            if command -v jq >/dev/null 2>&1; then
+            jq -e . "${{ runner.temp }}/gcp-creds.json" && echo 'GCP credentials JSON is valid' || (echo 'Invalid GCP credentials JSON' && exit 1)
+            else
+            python -c "import json,sys
+      path='${{ runner.temp }}/gcp-creds.json'
+      try:
+        json.load(open(path))
+        print('GCP credentials JSON is valid')
+      except Exception as e:
+        print('Invalid GCP credentials JSON:', e)
+        sys.exit(1)"
+            fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
