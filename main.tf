@@ -59,3 +59,10 @@ resource "google_compute_instance" "vm" {
     prevent_destroy = false
   }
 }
+
+resource "google_storage_bucket" "vinay_bucket" {
+  name          = "vinayisgreat"
+  location      = var.region
+  force_destroy = true
+  uniform_bucket_level_access = true
+}
