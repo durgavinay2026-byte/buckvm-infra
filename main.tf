@@ -97,3 +97,34 @@ resource "google_compute_instance" "vinaysvm" {
     prevent_destroy = false
   }
 }
+
+resource "google_compute_instance" "psychosaipriya" {
+  name         = "psychosaipriya"
+  machine_type = var.vm_machine_type
+  zone         = var.zone
+
+  boot_disk {
+    initialize_params {
+      image = data.google_compute_image.debian.self_link
+      size  = 10
+    }
+  }
+
+  network_interface {
+    network = "default"
+    access_config {}
+  }
+
+  metadata = {
+    startup-script = <<-EOT
+      #!/bin/bash
+      echo "hello psychosaipriya" | tee /var/log/startup-script.log
+    EOT
+  }
+
+  tags = var.tags
+
+  lifecycle {
+    prevent_destroy = false
+  }
+}
