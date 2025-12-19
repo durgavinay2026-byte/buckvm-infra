@@ -1,3 +1,5 @@
 flask
 pytz
 gunicorn
+google-cloud-bigquery
+faker

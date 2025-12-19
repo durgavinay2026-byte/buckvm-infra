@@ -1,8 +1,15 @@
 from flask import Flask, render_template, request
 from datetime import datetime
 import pytz
+import os
+from google.cloud import bigquery
 
 app = Flask(__name__)
+
+# Initialize BigQuery Client
+# Ensure GOOGLE_CLOUD_PROJECT env var is set or default to 'buckvm'
+project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "buckvm")
+bq_client = bigquery.Client(project=project_id)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -37,3 +44,13 @@ def index():
             result = "Error: " + str(e)
             
     return render_template('index.html', result=result)
+
+@app.route('/students')
+def students():
+    try:
+        query = f"SELECT * FROM `{project_id}.school_dataset.student` ORDER BY student_id"
+        query_job = bq_client.query(query)
+        students = [dict(row) for row in query_job]
+        return render_template('students.html', students=students)
+    except Exception as e:
+        return render_template('students.html', students=[], error=str(e))

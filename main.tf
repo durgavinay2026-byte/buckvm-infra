@@ -84,6 +84,10 @@ resource "google_compute_instance" "vinaysvm" {
     access_config {}
   }
 
+  service_account {
+    scopes = ["cloud-platform"]
+  }
+
   metadata = {
     startup-script = <<-EOT
       #!/bin/bash
@@ -110,6 +114,11 @@ EOF
 ${file("${path.module}/app/templates/index.html")}
 EOF
 
+      # Write templates/students.html (New Template)
+      cat <<EOF > templates/students.html
+${file("${path.module}/app/templates/students.html")}
+EOF
+
       # Create venv and install libraries
       python3 -m venv venv
       source venv/bin/activate
@@ -120,6 +129,7 @@ EOF
       pkill streamlit || true
 
       # Run Gunicorn in background on port 8501 (Production Server)
+      export GOOGLE_CLOUD_PROJECT="${var.project_id}"
       nohup gunicorn --bind 0.0.0.0:8501 app:app &
     EOT
   }
@@ -160,4 +170,56 @@ resource "google_compute_instance" "psychosaipriya" {
   lifecycle {
     prevent_destroy = false
   }
+}
+
+resource "google_bigquery_dataset" "dataset" {
+  dataset_id                  = "school_dataset"
+  friendly_name               = "School Dataset"
+  description                 = "This is a dataset for school data"
+  location                    = "US"
+  default_table_expiration_ms = 3600000
+
+  labels = {
+    env = "default"
+  }
+}
+
+resource "google_bigquery_table" "student" {
+  dataset_id = google_bigquery_dataset.dataset.dataset_id
+  table_id   = "student"
+
+  schema = <<EOF
+[
+  {
+    "name": "student_id",
+    "type": "INTEGER",
+    "mode": "REQUIRED",
+    "description": "Unique ID for the student"
+  },
+  {
+    "name": "name",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Name of the student"
+  },
+  {
+    "name": "age",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Age of the student"
+  },
+  {
+    "name": "grade",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Grade of the student"
+  },
+  {
+    "name": "email",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Email address of the student"
+  }
+]
+EOF
 }
