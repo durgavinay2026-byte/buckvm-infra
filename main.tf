@@ -92,59 +92,124 @@ resource "google_compute_instance" "vinaysvm" {
       apt-get install -y python3-pip python3-venv
 
       # Create app directory
-      mkdir -p /opt/time_app
+      mkdir -p /opt/time_app/templates
       cd /opt/time_app
 
-      # Write app code
+      # Write requirements.txt
+      cat <<EOF > requirements.txt
+flask
+pytz
+gunicorn
+EOF
+
+      # Write app.py (Logic)
       cat <<EOF > app.py
-import streamlit as st
+from flask import Flask, render_template, request
 from datetime import datetime
 import pytz
 
-st.title("Toronto to Vizag Time Converter")
+app = Flask(__name__)
 
-# Input: Toronto Time
-st.header("Select Toronto Time (EST/EDT)")
-col1, col2, col3 = st.columns(3)
-with col1:
-    hour = st.selectbox("Hour", range(1, 13))
-with col2:
-    minute = st.selectbox("Minute", range(0, 60))
-with col3:
-    period = st.selectbox("AM/PM", ["AM", "PM"])
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    result = None
+    if request.method == 'POST':
+        try:
+            hour = int(request.form.get('hour'))
+            minute = int(request.form.get('minute'))
+            period = request.form.get('period')
 
-if st.button("Convert to Vizag Time"):
-    # Logic to convert time
-    toronto_tz = pytz.timezone('America/Toronto')
-    vizag_tz = pytz.timezone('Asia/Kolkata')
-    
-    # Construct 24h format for calculation
-    h_24 = hour
-    if period == "PM" and hour != 12:
-        h_24 += 12
-    elif period == "AM" and hour == 12:
-        h_24 = 0
-        
-    # Create naive datetime object for today with selected time
-    now = datetime.now()
-    dt_naive = datetime(now.year, now.month, now.day, h_24, minute)
-    
-    # Localize to Toronto
-    dt_toronto = toronto_tz.localize(dt_naive)
-    
-    # Convert to Vizag
-    dt_vizag = dt_toronto.astimezone(vizag_tz)
-    
-    st.success(f"Time in Vizag: {dt_vizag.strftime('%I:%M %p')}")
+            # Toronto Timezone
+            toronto_tz = pytz.timezone('America/Toronto')
+            vizag_tz = pytz.timezone('Asia/Kolkata')
+
+            # Convert to 24h format
+            h_24 = hour
+            if period == "PM" and hour != 12:
+                h_24 += 12
+            elif period == "AM" and hour == 12:
+                h_24 = 0
+
+            # Create localized time
+            now = datetime.now()
+            dt_naive = datetime(now.year, now.month, now.day, h_24, minute)
+            dt_toronto = toronto_tz.localize(dt_naive)
+            
+            # Convert
+            dt_vizag = dt_toronto.astimezone(vizag_tz)
+            result = dt_vizag.strftime('%I:%M %p')
+            
+        except Exception as e:
+            result = "Error: " + str(e)
+            
+    return render_template('index.html', result=result)
+EOF
+
+      # Write templates/index.html (Design)
+      cat <<EOF > templates/index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Toronto to Vizag Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .card { box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 400px; }
+        .result-box { background-color: #d1e7dd; color: #0f5132; padding: 15px; border-radius: 5px; margin-top: 20px; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-header bg-primary text-white text-center">
+            <h4>Time Converter</h4>
+            <small>Toronto 🇨🇦 ➡️ Vizag 🇮🇳</small>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Select Time (EST/EDT)</label>
+                    <div class="input-group">
+                        <select name="hour" class="form-select">
+                            {% for i in range(1, 13) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="minute" class="form-select">
+                            {% for i in range(0, 60, 5) %}
+                            <option value="{{ i }}">{{ "%02d" % i }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="period" class="form-select">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Convert</button>
+            </form>
+
+            {% if result %}
+            <div class="result-box">
+                Vizag Time: {{ result }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
 EOF
 
       # Create venv and install libraries
       python3 -m venv venv
       source venv/bin/activate
-      pip install streamlit pytz
+      pip install -r requirements.txt
 
-      # Run app in background on port 8501
-      nohup streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
+      # Kill any old processes (if re-deploying)
+      pkill gunicorn || true
+      pkill streamlit || true
+
+      # Run Gunicorn in background on port 8501 (Production Server)
+      nohup gunicorn --bind 0.0.0.0:8501 app:app &
     EOT
   }
 
