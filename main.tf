@@ -12,7 +12,7 @@ resource "google_storage_bucket" "app" {
 
 resource "google_kms_key_ring" "kr" {
   count    = var.create_kms ? 1 : 0
-  name     = "terraform-keyring-v2"
+  name     = "terraform-keyring-${random_id.suffix.hex}"
   location = var.region
 }
 
