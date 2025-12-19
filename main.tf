@@ -97,106 +97,17 @@ resource "google_compute_instance" "vinaysvm" {
 
       # Write requirements.txt
       cat <<EOF > requirements.txt
-flask
-pytz
-gunicorn
+${file("${path.module}/app/requirements.txt")}
 EOF
 
       # Write app.py (Logic)
       cat <<EOF > app.py
-from flask import Flask, render_template, request
-from datetime import datetime
-import pytz
-
-app = Flask(__name__)
-
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    result = None
-    if request.method == 'POST':
-        try:
-            hour = int(request.form.get('hour'))
-            minute = int(request.form.get('minute'))
-            period = request.form.get('period')
-
-            # Toronto Timezone
-            toronto_tz = pytz.timezone('America/Toronto')
-            vizag_tz = pytz.timezone('Asia/Kolkata')
-
-            # Convert to 24h format
-            h_24 = hour
-            if period == "PM" and hour != 12:
-                h_24 += 12
-            elif period == "AM" and hour == 12:
-                h_24 = 0
-
-            # Create localized time
-            now = datetime.now()
-            dt_naive = datetime(now.year, now.month, now.day, h_24, minute)
-            dt_toronto = toronto_tz.localize(dt_naive)
-            
-            # Convert
-            dt_vizag = dt_toronto.astimezone(vizag_tz)
-            result = dt_vizag.strftime('%I:%M %p')
-            
-        except Exception as e:
-            result = "Error: " + str(e)
-            
-    return render_template('index.html', result=result)
+${file("${path.module}/app/app.py")}
 EOF
 
       # Write templates/index.html (Design)
       cat <<EOF > templates/index.html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Toronto to Vizag Converter</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #f8f9fa; display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .card { box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 400px; }
-        .result-box { background-color: #d1e7dd; color: #0f5132; padding: 15px; border-radius: 5px; margin-top: 20px; text-align: center; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div class="card-header bg-primary text-white text-center">
-            <h4>Time Converter</h4>
-            <small>Toronto 🇨🇦 ➡️ Vizag 🇮🇳</small>
-        </div>
-        <div class="card-body">
-            <form method="POST">
-                <div class="mb-3">
-                    <label class="form-label">Select Time (EST/EDT)</label>
-                    <div class="input-group">
-                        <select name="hour" class="form-select">
-                            {% for i in range(1, 13) %}
-                            <option value="{{ i }}">{{ i }}</option>
-                            {% endfor %}
-                        </select>
-                        <select name="minute" class="form-select">
-                            {% for i in range(0, 60, 5) %}
-                            <option value="{{ i }}">{{ "%02d" % i }}</option>
-                            {% endfor %}
-                        </select>
-                        <select name="period" class="form-select">
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                        </select>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary w-100">Convert</button>
-            </form>
-
-            {% if result %}
-            <div class="result-box">
-                Vizag Time: {{ result }}
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</body>
-</html>
+${file("${path.module}/app/templates/index.html")}
 EOF
 
       # Create venv and install libraries
