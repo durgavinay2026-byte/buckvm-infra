@@ -87,7 +87,64 @@ resource "google_compute_instance" "vinaysvm" {
   metadata = {
     startup-script = <<-EOT
       #!/bin/bash
-      echo "hello vinay" | tee /var/log/startup-script.log
+      # Install dependencies
+      apt-get update
+      apt-get install -y python3-pip python3-venv
+
+      # Create app directory
+      mkdir -p /opt/time_app
+      cd /opt/time_app
+
+      # Write app code
+      cat <<EOF > app.py
+import streamlit as st
+from datetime import datetime
+import pytz
+
+st.title("Toronto to Vizag Time Converter")
+
+# Input: Toronto Time
+st.header("Select Toronto Time (EST/EDT)")
+col1, col2, col3 = st.columns(3)
+with col1:
+    hour = st.selectbox("Hour", range(1, 13))
+with col2:
+    minute = st.selectbox("Minute", range(0, 60))
+with col3:
+    period = st.selectbox("AM/PM", ["AM", "PM"])
+
+if st.button("Convert to Vizag Time"):
+    # Logic to convert time
+    toronto_tz = pytz.timezone('America/Toronto')
+    vizag_tz = pytz.timezone('Asia/Kolkata')
+    
+    # Construct 24h format for calculation
+    h_24 = hour
+    if period == "PM" and hour != 12:
+        h_24 += 12
+    elif period == "AM" and hour == 12:
+        h_24 = 0
+        
+    # Create naive datetime object for today with selected time
+    now = datetime.now()
+    dt_naive = datetime(now.year, now.month, now.day, h_24, minute)
+    
+    # Localize to Toronto
+    dt_toronto = toronto_tz.localize(dt_naive)
+    
+    # Convert to Vizag
+    dt_vizag = dt_toronto.astimezone(vizag_tz)
+    
+    st.success(f"Time in Vizag: {dt_vizag.strftime('%I:%M %p')}")
+EOF
+
+      # Create venv and install libraries
+      python3 -m venv venv
+      source venv/bin/activate
+      pip install streamlit pytz
+
+      # Run app in background on port 8501
+      nohup streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
     EOT
   }
 
