@@ -12,13 +12,13 @@ resource "google_storage_bucket" "app" {
 
 resource "google_kms_key_ring" "kr" {
   count    = var.create_kms ? 1 : 0
-  name     = "terraform-keyring"
+  name     = "terraform-keyring-v2"
   location = var.region
 }
 
 resource "google_kms_crypto_key" "ck" {
   count    = var.create_kms ? 1 : 0
-  name     = "terraform-key"
+  name     = "terraform-key-v2"
   key_ring = google_kms_key_ring.kr[0].id
   rotation_period = "2592000s" # 30 days
 }
